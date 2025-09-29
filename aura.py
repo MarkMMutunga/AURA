@@ -198,8 +198,8 @@ class AURA:
         goals = self.get_goals()
         
         if goals:
-            print("\n🎯 Here are your current goals:")
-            print("=" * 40)
+            print("\n🎯 Welcome back! Here are your current goals:")
+            print("=" * 45)
             for i, (goal, date_added) in enumerate(goals, 1):
                 # Format date nicely
                 try:
@@ -211,8 +211,49 @@ class AURA:
                 print(f"{i}. {goal}")
                 print(f"   📅 Added on {formatted_date}")
                 print()
+            return True  # Has goals
         else:
             print("\n📋 You don't have any goals yet. Tell me something you want to achieve!")
+            return False  # No goals
+    
+    def daily_checkin(self):
+        """Perform daily check-in: show goals and ask about mood."""
+        print("🤖 Welcome to your daily check-in with AURA!")
+        
+        # Show current goals
+        has_goals = self.show_startup_goals()
+        
+        if has_goals:
+            print("💭 These goals are here to guide and motivate you today!")
+        
+        # Ask about today's mood
+        print("\n" + "="*50)
+        print("🌟 How are you feeling today?")
+        print("💡 (Share your mood - I'm here to support you!)")
+        
+        try:
+            mood_input = input("\n💭 You: ").strip()
+            
+            if mood_input:
+                # Process the mood using existing detection logic
+                mood_response = self.detect_mood(mood_input)
+                
+                if mood_response:
+                    print(f"\n🤖 AURA: {mood_response}")
+                else:
+                    # If no specific mood detected, still be supportive
+                    print(f"\n🤖 AURA: Thanks for sharing! I'm here to support you throughout the day. 💙")
+                    # Still log it as a general mood entry
+                    self.add_mood("general", mood_input)
+                
+                print("\n✨ Let's make today great together! Feel free to share goals or chat with me.")
+            else:
+                print("\n🤖 AURA: That's okay! I'm here whenever you want to talk. 😊")
+                
+        except (KeyboardInterrupt, EOFError):
+            print("\n🤖 AURA: No worries! We can check in anytime. 👋")
+        
+        print("\n" + "="*50)
     
     def get_random_encouragement(self):
         """Return a random encouraging message."""
@@ -232,8 +273,8 @@ class AURA:
         print("💡 Tell me your goals (e.g., 'I want to learn Python') or share how you're feeling.")
         print("💬 Type 'quit' to exit, 'goals' to see your goals, or 'encourage' for motivation.\n")
         
-        # Show existing goals on startup
-        self.show_startup_goals()
+        # Perform daily check-in instead of just showing goals
+        self.daily_checkin()
         
         while True:
             try:
