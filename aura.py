@@ -2,7 +2,26 @@
 """
 AURA (Adaptive Understanding & Reflective Assistant)
 A simple terminal-based AI companion that remembers user goals and moods.
+
+Author: Mark Mikile Mutunga
+Email: markmiki03@gmail.com
+Phone: +254707678643
+Copyright (c) 2025 Mark Mikile Mutunga. All rights reserved.
+
+This software is licensed under the MIT License.
+See the LICENSE file for full license text.
 """
+
+#==============================================================================
+# Copyright (c) 2025 Mark Mikile Mutunga
+# 
+# Author: Mark Mikile Mutunga
+# Email: markmiki03@gmail.com
+# Phone: +254707678643
+# 
+# Licensed under the MIT License
+# See LICENSE file for details
+#==============================================================================
 
 import sqlite3
 import datetime

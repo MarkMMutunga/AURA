@@ -85,6 +85,14 @@ Feel free to fork this project and add your own features! Some ideas:
 
 MIT License - feel free to use and modify as you wish!
 
+## Author
+
+**Mark Mikile Mutunga**
+- Email: markmiki03@gmail.com
+- Phone: +254707678643
+
 ---
 
 Built with ❤️ to help you stay motivated and achieve your goals!
+
+© 2025 Mark Mikile Mutunga. All rights reserved.
