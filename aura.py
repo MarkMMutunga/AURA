@@ -88,6 +88,18 @@ class AURA:
                 )
             ''')
             
+            # Create reminders table for scheduled notifications
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS reminders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    goal_id INTEGER NOT NULL,
+                    message TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    is_read INTEGER DEFAULT 0,
+                    FOREIGN KEY (goal_id) REFERENCES goals (id)
+                )
+            ''')
+            
             conn.commit()
             conn.close()
             print("🤖 AURA database initialized successfully!")
@@ -248,6 +260,103 @@ class AURA:
         
         print("\n✨ Thanks for sharing your progress! Every step forward matters! 🚀")
         print("=" * 50)
+    
+    def save_reminder(self, goal_id, message):
+        """Save a reminder message to the database."""
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO reminders (goal_id, message, created_at)
+                VALUES (?, ?, ?)
+            ''', (goal_id, message, datetime.datetime.now().isoformat()))
+            
+            conn.commit()
+            conn.close()
+            
+            return True
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error saving reminder: {e}")
+            return False
+    
+    def get_unread_reminders(self):
+        """Retrieve all unread reminder messages from the database."""
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT r.id, r.message, r.created_at, g.goal_text 
+                FROM reminders r
+                JOIN goals g ON r.goal_id = g.id
+                WHERE r.is_read = 0
+                ORDER BY r.created_at DESC
+            ''')
+            
+            reminders = cursor.fetchall()
+            conn.close()
+            
+            return reminders
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error retrieving reminders: {e}")
+            return []
+    
+    def mark_reminder_read(self, reminder_id):
+        """Mark a reminder as read."""
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE reminders 
+                SET is_read = 1 
+                WHERE id = ?
+            ''', (reminder_id,))
+            
+            conn.commit()
+            conn.close()
+            
+            return True
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error marking reminder as read: {e}")
+            return False
+    
+    def create_daily_reminder(self):
+        """Create a daily reminder for one of the user's goals."""
+        try:
+            goals_with_ids = self.get_goals_with_ids()
+            
+            if not goals_with_ids:
+                return False  # No goals to remind about
+            
+            # Pick a random goal for the reminder (or cycle through them)
+            goal_id, goal_text, date_added = random.choice(goals_with_ids)
+            
+            # Create reminder message
+            reminder_messages = [
+                f"🔔 Daily Reminder: Did you work on '{goal_text}' today?",
+                f"⏰ Time check: Have you made progress on '{goal_text}' today?",
+                f"🎯 Gentle reminder: How did '{goal_text}' go today?",
+                f"💭 Just checking in: Any progress on '{goal_text}' today?",
+                f"🌟 Daily check: Did you take a step toward '{goal_text}' today?"
+            ]
+            
+            reminder_message = random.choice(reminder_messages)
+            
+            # Save the reminder to database
+            if self.save_reminder(goal_id, reminder_message):
+                print(f"✅ Daily reminder created for goal: {goal_text}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"❌ Error creating daily reminder: {e}")
+            return False
     
     def detect_goal(self, user_input):
         """Check if user input contains a goal statement."""

@@ -320,6 +320,26 @@
 
         // Track if this is the first message
         let firstMessage = true;
+        
+        // Check for reminders every 30 seconds
+        setInterval(checkForReminders, 30000);
+
+        function checkForReminders() {
+            fetch('/check-reminders')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.has_reminders && data.reminders.length > 0) {
+                        // Display each reminder as an AURA message
+                        data.reminders.forEach(reminder => {
+                            const reminderText = `${reminder.message}\n📅 ${reminder.time}`;
+                            addMessage(reminderText, false);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.log('Error checking for reminders:', error);
+                });
+        }
 
         function addMessage(content, isUser = false) {
             // Remove welcome message if it exists

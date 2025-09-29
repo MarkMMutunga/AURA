@@ -24,17 +24,26 @@ See the LICENSE file for full license text.
 #==============================================================================
 
 from flask import Flask, render_template, request, jsonify, session
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 import sqlite3
 import datetime
 import re
 import random
 import os
+import atexit
 
 # Import the AURA class from our existing module
 from aura import AURA
 
 app = Flask(__name__)
 app.secret_key = 'aura-web-secret-key-2025'  # Required for sessions
+
+# Initialize the background scheduler
+scheduler = BackgroundScheduler()
+scheduler.start()
+# Shut down the scheduler when exiting the app
+atexit.register(lambda: scheduler.shutdown())
 
 class WebAURA(AURA):
     """
@@ -103,8 +112,27 @@ class WebAURA(AURA):
             return "📋 You don't have any goals yet. Tell me something you want to achieve!"
     
     def get_initial_greeting(self):
-        """Get the initial greeting with goals for new sessions."""
+        """Get the initial greeting with goals and pending reminders for new sessions."""
         greeting = "🤖 Welcome to AURA - Your Adaptive Understanding & Reflective Assistant!\n\n"
+        
+        # Check for pending reminders first
+        reminders = self.get_unread_reminders()
+        if reminders:
+            greeting += "🔔 You have pending reminders:\n\n"
+            for reminder_id, message, created_at, goal_text in reminders:
+                try:
+                    date_obj = datetime.datetime.fromisoformat(created_at)
+                    formatted_time = date_obj.strftime("%I:%M %p")
+                except:
+                    formatted_time = "Recently"
+                
+                greeting += f"• {message}\n"
+                greeting += f"  📅 {formatted_time}\n\n"
+                
+                # Mark reminder as read since we're showing it
+                self.mark_reminder_read(reminder_id)
+            
+            greeting += "---\n\n"
         
         # Show goals if they exist
         goals = self.get_goals()
@@ -135,6 +163,43 @@ class WebAURA(AURA):
 
 # Create a global WebAURA instance
 web_aura = WebAURA()
+
+# =============================================================================
+# SCHEDULER FUNCTIONS FOR DAILY REMINDERS
+# =============================================================================
+
+def create_daily_reminder_job():
+    """
+    Scheduled job function that creates daily reminders.
+    This runs in the background and generates reminder messages for users' goals.
+    """
+    try:
+        print("🔔 Running daily reminder job...")
+        
+        # Create a reminder using the global AURA instance
+        success = web_aura.create_daily_reminder()
+        
+        if success:
+            print("✅ Daily reminder created successfully!")
+        else:
+            print("ℹ️  No goals found or reminder creation failed.")
+            
+    except Exception as e:
+        print(f"❌ Error in daily reminder job: {e}")
+
+# Schedule the daily reminder job
+# For testing: runs every 2 minutes
+# For production: change to every 24 hours using cron trigger
+scheduler.add_job(
+    func=create_daily_reminder_job,
+    trigger=IntervalTrigger(minutes=2),  # Change to hours=24 for daily
+    id='daily_reminder_job',
+    name='Create daily goal reminders',
+    replace_existing=True
+)
+
+print("📅 Daily reminder scheduler initialized (every 2 minutes for testing)")
+print("💡 Change to hours=24 for production use")
 
 @app.route('/')
 def home():
@@ -174,6 +239,48 @@ def reset_session():
     """Reset the chat session."""
     session.clear()
     return jsonify({'status': 'Session reset'})
+
+@app.route('/check-reminders')
+def check_reminders():
+    """Check for new unread reminders and return them."""
+    try:
+        reminders = web_aura.get_unread_reminders()
+        
+        if reminders:
+            # Format reminders for display
+            reminder_messages = []
+            for reminder_id, message, created_at, goal_text in reminders:
+                try:
+                    date_obj = datetime.datetime.fromisoformat(created_at)
+                    formatted_time = date_obj.strftime("%I:%M %p")
+                except:
+                    formatted_time = "Recently"
+                
+                reminder_messages.append({
+                    'id': reminder_id,
+                    'message': message,
+                    'time': formatted_time,
+                    'goal': goal_text
+                })
+                
+                # Mark as read since we're showing it
+                web_aura.mark_reminder_read(reminder_id)
+            
+            return jsonify({
+                'has_reminders': True,
+                'reminders': reminder_messages
+            })
+        else:
+            return jsonify({
+                'has_reminders': False,
+                'reminders': []
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'has_reminders': False,
+            'error': str(e)
+        })
 
 if __name__ == '__main__':
     print("🌐 Starting AURA Web Interface...")
