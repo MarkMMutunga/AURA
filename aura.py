@@ -77,6 +77,17 @@ class AURA:
                 )
             ''')
             
+            # Create progress table for goal tracking
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS progress (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    goal_id INTEGER NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (goal_id) REFERENCES goals (id)
+                )
+            ''')
+            
             conn.commit()
             conn.close()
             print("🤖 AURA database initialized successfully!")
@@ -148,6 +159,96 @@ class AURA:
             print(f"❌ Error retrieving goals: {e}")
             return []
     
+    def get_goals_with_ids(self):
+        """Retrieve all active goals with their IDs from the database."""
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT id, goal_text, date_added FROM goals 
+                WHERE status = 'active' 
+                ORDER BY date_added DESC
+            ''')
+            
+            goals = cursor.fetchall()
+            conn.close()
+            
+            return goals
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error retrieving goals: {e}")
+            return []
+    
+    def save_progress(self, goal_id, status):
+        """Save progress for a specific goal."""
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO progress (goal_id, status, created_at)
+                VALUES (?, ?, ?)
+            ''', (goal_id, status, datetime.datetime.now().isoformat()))
+            
+            conn.commit()
+            conn.close()
+            
+            return True
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error saving progress: {e}")
+            return False
+    
+    def ask_goal_progress(self):
+        """Ask user about progress on each of their goals."""
+        goals_with_ids = self.get_goals_with_ids()
+        
+        if not goals_with_ids:
+            return  # No goals to track
+        
+        print("\n📈 Let's check your progress on your goals!")
+        print("=" * 50)
+        
+        for goal_id, goal_text, date_added in goals_with_ids:
+            try:
+                print(f"\n🎯 Goal: {goal_text}")
+                answer = input(f"💭 Did you work on this goal today? (yes/no): ").strip().lower()
+                
+                if answer in ['yes', 'y']:
+                    # Save positive progress
+                    if self.save_progress(goal_id, 'yes'):
+                        responses = [
+                            f"🎉 Awesome! Great job working on '{goal_text}' today!",
+                            f"💪 That's fantastic progress on '{goal_text}'! Keep it up!",
+                            f"🌟 Well done! Every step counts towards '{goal_text}'!",
+                            f"✨ Excellent work on '{goal_text}' today! You're doing amazing!"
+                        ]
+                        print(f"🤖 AURA: {random.choice(responses)}")
+                    
+                elif answer in ['no', 'n']:
+                    # Save negative progress with encouragement
+                    if self.save_progress(goal_id, 'no'):
+                        responses = [
+                            f"💙 That's okay! Tomorrow is a fresh start for '{goal_text}'.",
+                            f"🤗 No worries! Small steps towards '{goal_text}' still count.",
+                            f"🌱 It's all good! Progress on '{goal_text}' can happen anytime.",
+                            f"💫 Don't worry! Each day is a new opportunity for '{goal_text}'."
+                        ]
+                        print(f"🤖 AURA: {random.choice(responses)}")
+                
+                else:
+                    print("🤖 AURA: I'll take that as 'maybe' - that's still progress! 😊")
+                    # Save as uncertain progress
+                    self.save_progress(goal_id, 'maybe')
+                    
+            except (KeyboardInterrupt, EOFError):
+                print("\n🤖 AURA: No problem! We can check progress anytime. 👍")
+                break
+        
+        print("\n✨ Thanks for sharing your progress! Every step forward matters! 🚀")
+        print("=" * 50)
+    
     def detect_goal(self, user_input):
         """Check if user input contains a goal statement."""
         goal_patterns = [
@@ -217,7 +318,7 @@ class AURA:
             return False  # No goals
     
     def daily_checkin(self):
-        """Perform daily check-in: show goals and ask about mood."""
+        """Perform daily check-in: show goals, ask about mood, and track progress."""
         print("🤖 Welcome to your daily check-in with AURA!")
         
         # Show current goals
@@ -246,14 +347,21 @@ class AURA:
                     # Still log it as a general mood entry
                     self.add_mood("general", mood_input)
                 
-                print("\n✨ Let's make today great together! Feel free to share goals or chat with me.")
             else:
                 print("\n🤖 AURA: That's okay! I'm here whenever you want to talk. 😊")
                 
         except (KeyboardInterrupt, EOFError):
             print("\n🤖 AURA: No worries! We can check in anytime. 👋")
         
-        print("\n" + "="*50)
+        # Ask about goal progress if user has goals
+        if has_goals:
+            try:
+                self.ask_goal_progress()
+            except (KeyboardInterrupt, EOFError):
+                print("\n🤖 AURA: That's alright! We can track progress another time. �")
+        
+        print("\n✨ Let's make today great together! Feel free to share goals or chat with me.")
+        print("=" * 50)
     
     def get_random_encouragement(self):
         """Return a random encouraging message."""
