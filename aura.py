@@ -34,38 +34,21 @@ class AURA:
         self.db_name = "aura_memory.db"
         self.setup_database()
         
-        # Mood keywords and responses
+        # Empathetic mood responses (single, more personal responses)
         self.mood_responses = {
-            "tired": [
-                "I understand you're feeling tired. Remember to take breaks and get enough rest! 💤",
-                "Tiredness is your body's way of asking for rest. Maybe try a short break?",
-                "When tired, even small steps count. You're doing great! 🌟"
-            ],
-            "stressed": [
-                "Stress can be overwhelming, but you're stronger than you think! 💪",
-                "Take a deep breath. You've handled challenges before, and you can handle this too.",
-                "Remember: one step at a time. You don't have to solve everything at once. 🌱"
-            ],
-            "unmotivated": [
-                "Lack of motivation is temporary. Your goals are still waiting for you! 🎯",
-                "Sometimes the hardest part is just starting. You've got this! ✨",
-                "Remember why you started. Your future self will thank you for not giving up."
-            ],
-            "sad": [
-                "It's okay to feel sad sometimes. Your feelings are valid. 💙",
-                "This feeling will pass. You're not alone in this journey.",
-                "Be gentle with yourself today. Tomorrow is a new opportunity. 🌅"
-            ],
-            "happy": [
-                "I love seeing you happy! Keep that positive energy flowing! 😊",
-                "Your happiness brightens the day! What's making you feel so good?",
-                "Happiness looks good on you! Keep celebrating the good moments! 🎉"
-            ],
-            "anxious": [
-                "Anxiety is tough, but you're tougher. Try some deep breathing exercises. 🫁",
-                "Focus on what you can control. You're doing better than you think.",
-                "Anxiety often lies to us. Trust in your ability to handle whatever comes. 🦋"
-            ]
+            "tired": "I hear you. 💙 Maybe a quick rest or even a 5-minute stretch could help.",
+            "stressed": "That sounds tough 😔. How about taking things one step at a time?",
+            "unmotivated": "I get it. Small wins count too! Try doing just one tiny task.",
+            "happy": "Love to hear that! 🎉 Keep riding that wave of positivity.",
+            "sad": "I understand that feeling 💙. It's okay to feel sad - your emotions are valid.",
+            "anxious": "Anxiety is really hard 😰. Try taking a few deep breaths with me.",
+            "overwhelmed": "That sounds really overwhelming 😓. Let's break it down into smaller pieces.",
+            "frustrated": "Frustration is tough 😤. Take a moment to breathe and reset.",
+            "lonely": "I'm here with you 🤗. You're not alone in this journey.",
+            "excited": "Your excitement is contagious! ✨ What's got you feeling so good?",
+            "worried": "I can sense your worry 😟. Let's focus on what you can control right now.",
+            "confused": "Confusion is normal when learning something new 🤔. Take it step by step.",
+            "default": "Thanks for sharing that. Remember, I'm here to keep you moving forward 💡."
         }
     
     def setup_database(self):
@@ -182,23 +165,32 @@ class AURA:
         return False
     
     def detect_mood(self, user_input):
-        """Detect mood keywords in user input and return appropriate response."""
+        """Detect mood keywords in user input and return appropriate empathetic response."""
         user_lower = user_input.lower()
         
-        # Check for mood indicators
-        if any(phrase in user_lower for phrase in ["i feel", "i'm feeling", "feeling", "i am"]):
-            for mood, responses in self.mood_responses.items():
-                if mood in user_lower:
-                    # Log the mood
-                    self.add_mood(mood, user_input)
-                    return random.choice(responses)
+        # Check for explicit mood indicators first (I feel, I'm, etc.)
+        mood_indicators = ["i feel", "i'm feeling", "i am feeling", "feeling", "i am", "i'm"]
+        has_mood_indicator = any(phrase in user_lower for phrase in mood_indicators)
         
-        # Check for direct mood words
-        for mood, responses in self.mood_responses.items():
-            if mood in user_lower:
-                self.add_mood(mood, user_input)
-                return random.choice(responses)
+        # Look for mood keywords in the input
+        detected_mood = None
+        for mood in self.mood_responses.keys():
+            if mood != "default" and mood in user_lower:
+                detected_mood = mood
+                break
         
+        # If we found a mood or have mood indicators, provide a response
+        if detected_mood:
+            # Log the mood in database
+            self.add_mood(detected_mood, user_input)
+            return self.mood_responses[detected_mood]
+        elif has_mood_indicator:
+            # User is expressing a mood but we don't have a specific response
+            # Log it as "other" and use default response
+            self.add_mood("other", user_input)
+            return self.mood_responses["default"]
+        
+        # No mood detected
         return None
     
     def show_startup_goals(self):
