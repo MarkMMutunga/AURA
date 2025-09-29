@@ -161,6 +161,107 @@ class WebAURA(AURA):
         
         return greeting
 
+    def get_mood_analytics(self):
+        """
+        Fetch mood data from database and prepare for charting.
+        Returns mood counts by type and mood trends over time.
+        """
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            # Get mood counts by type for pie/doughnut chart
+            cursor.execute('''
+                SELECT mood, COUNT(*) as count 
+                FROM moods 
+                WHERE mood != 'general' AND mood != 'other'
+                GROUP BY mood 
+                ORDER BY count DESC
+            ''')
+            mood_counts = cursor.fetchall()
+            
+            # Get mood trends over time (last 30 days)
+            cursor.execute('''
+                SELECT DATE(date_logged) as date, mood, COUNT(*) as count
+                FROM moods 
+                WHERE date_logged >= datetime('now', '-30 days')
+                AND mood != 'general' AND mood != 'other'
+                GROUP BY DATE(date_logged), mood
+                ORDER BY date DESC
+            ''')
+            mood_trends = cursor.fetchall()
+            
+            # Get total mood entries
+            cursor.execute('SELECT COUNT(*) FROM moods')
+            total_moods = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            return {
+                'mood_counts': mood_counts,
+                'mood_trends': mood_trends,
+                'total_entries': total_moods
+            }
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error fetching mood analytics: {e}")
+            return {'mood_counts': [], 'mood_trends': [], 'total_entries': 0}
+
+    def get_goal_progress_analytics(self):
+        """
+        Fetch goal progress data from database and prepare for charting.
+        Returns progress statistics for each goal.
+        """
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            # Get progress data grouped by goal with yes/no counts
+            cursor.execute('''
+                SELECT 
+                    g.goal_text,
+                    SUM(CASE WHEN p.status = 'yes' THEN 1 ELSE 0 END) as yes_count,
+                    SUM(CASE WHEN p.status = 'no' THEN 1 ELSE 0 END) as no_count,
+                    SUM(CASE WHEN p.status = 'maybe' THEN 1 ELSE 0 END) as maybe_count,
+                    COUNT(p.id) as total_checks
+                FROM goals g
+                LEFT JOIN progress p ON g.id = p.goal_id
+                WHERE g.status = 'active'
+                GROUP BY g.id, g.goal_text
+                ORDER BY total_checks DESC
+            ''')
+            goal_progress = cursor.fetchall()
+            
+            # Get progress trends over time (last 30 days)
+            cursor.execute('''
+                SELECT 
+                    DATE(p.created_at) as date,
+                    SUM(CASE WHEN p.status = 'yes' THEN 1 ELSE 0 END) as yes_count,
+                    SUM(CASE WHEN p.status = 'no' THEN 1 ELSE 0 END) as no_count
+                FROM progress p
+                WHERE p.created_at >= datetime('now', '-30 days')
+                GROUP BY DATE(p.created_at)
+                ORDER BY date DESC
+            ''')
+            progress_trends = cursor.fetchall()
+            
+            # Get total progress entries
+            cursor.execute('SELECT COUNT(*) FROM progress')
+            total_progress = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            return {
+                'goal_progress': goal_progress,
+                'progress_trends': progress_trends,
+                'total_progress_entries': total_progress
+            }
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error fetching goal progress analytics: {e}")
+            return {'goal_progress': [], 'progress_trends': [], 'total_progress_entries': 0}
+
+
 # Create a global WebAURA instance
 web_aura = WebAURA()
 
@@ -279,6 +380,40 @@ def check_reminders():
     except Exception as e:
         return jsonify({
             'has_reminders': False,
+            'error': str(e)
+        })
+
+# =============================================================================
+# DASHBOARD ROUTES AND DATA ANALYTICS
+# =============================================================================
+
+@app.route('/dashboard')
+def dashboard():
+    """Serve the analytics dashboard."""
+    return render_template('dashboard.html')
+
+@app.route('/data')
+def get_dashboard_data():
+    """
+    API endpoint to fetch analytics data for the dashboard.
+    Returns mood trends and goal progress data as JSON.
+    """
+    try:
+        # Get mood trends data using WebAURA instance
+        mood_data = web_aura.get_mood_analytics()
+        
+        # Get goal progress data using WebAURA instance
+        progress_data = web_aura.get_goal_progress_analytics()
+        
+        return jsonify({
+            'success': True,
+            'mood_data': mood_data,
+            'progress_data': progress_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
             'error': str(e)
         })
 

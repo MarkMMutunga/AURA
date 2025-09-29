@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA – Analytics Dashboard</title>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Reset and modern base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent-blue: #00d4ff;
+            --accent-purple: #8b5cf6;
+            --accent-green: #22c55e;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow-glow: 0 0 40px rgba(0, 212, 255, 0.15);
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Light theme */
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --glass-bg: rgba(0, 0, 0, 0.03);
+            --glass-border: rgba(0, 0, 0, 0.08);
+            --shadow-glow: 0 0 40px rgba(0, 212, 255, 0.1);
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.05) 0%, transparent 50%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Theme transition for all elements */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Animated background elements */
+        .bg-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-element {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            opacity: 0.03;
+            animation: drift 30s infinite ease-in-out;
+        }
+
+        .bg-element:nth-child(1) {
+            background: var(--accent-blue);
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .bg-element:nth-child(2) {
+            background: var(--accent-purple);
+            top: 60%;
+            right: 10%;
+            animation-delay: 10s;
+        }
+
+        .bg-element:nth-child(3) {
+            background: var(--accent-green);
+            bottom: 20%;
+            left: 50%;
+            animation-delay: 20s;
+        }
+
+        @keyframes drift {
+            0%, 100% { transform: translateY(0px) translateX(0px); }
+            33% { transform: translateY(-30px) translateX(30px); }
+            66% { transform: translateY(30px) translateX(-30px); }
+        }
+
+        /* Main container */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+        }
+
+        /* Ultra-modern header */
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 24px 0;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content h1 {
+            font-size: clamp(28px, 5vw, 42px);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+
+        .header-content p {
+            font-size: 17px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-weight: 500;
+            letter-spacing: 0.005em;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .nav a {
+            padding: 12px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(20px);
+        }
+
+        .nav a:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .nav a.active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            padding: 10px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(20px);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* Main content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* Brutalist stats section */
+        .stats-section {
+            margin-bottom: 60px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 32px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-glow);
+            border-color: var(--accent-blue);
+        }
+
+        .stat-value {
+            font-size: clamp(36px, 6vw, 56px);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            line-height: 0.9;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .stat-change {
+            margin-top: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .stat-change.positive {
+            color: var(--accent-green);
+        }
+
+        .stat-change.negative {
+            color: var(--accent-red);
+        }
+
+        /* Modern charts section */
+        .charts-section {
+            margin-bottom: 60px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 32px;
+        }
+
+        .chart-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 32px;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chart-container:hover {
+            border-color: var(--accent-blue);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .chart-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }
+
+        .chart-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            font-weight: 500;
+            letter-spacing: 0.005em;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        /* Full-width trend chart */
+        .trend-chart {
+            grid-column: 1 / -1;
+        }
+
+        .trend-chart .chart-wrapper {
+            height: 300px;
+        }
+
+        /* Modern loading and empty states */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 400px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--glass-border);
+            border-top: 3px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .empty-state a {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .empty-state a:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 16px;
+            margin: 20px 0;
+        }
+
+        .error-state h3 {
+            color: var(--accent-red);
+            margin-bottom: 8px;
+        }
+
+        .error-state button {
+            margin-top: 16px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent-red);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .nav {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .main-content {
+                padding: 24px 16px;
+            }
+            
+            .stat-card {
+                padding: 24px;
+            }
+            
+            .stat-value {
+                font-size: 40px;
+            }
+            
+            .chart-container {
+                padding: 20px;
+            }
+            
+            .charts-grid {
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="bg-elements">
+        <div class="bg-element"></div>
+        <div class="bg-element"></div>
+        <div class="bg-element"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Ultra-modern Header -->
+        <div class="header">
+            <div class="header-content">
+                <div>
+                    <h1>AURA Analytics</h1>
+                    <p>Your Personal Intelligence Dashboard</p>
+                </div>
+                
+                <!-- Navigation -->
+                <div class="nav">
+                    <a href="/">💬 Chat Interface</a>
+                    <a href="/dashboard" class="active">📊 Analytics</a>
+                    <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Stats Section -->
+            <div class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalGoals">-</div>
+                        <div class="stat-label">Active Goals</div>
+                        <div class="stat-change positive" id="goalsChange">+0 this week</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalMoods">-</div>
+                        <div class="stat-label">Mood Entries</div>
+                        <div class="stat-change positive" id="moodsChange">+0 this week</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalProgress">-</div>
+                        <div class="stat-label">Progress Checks</div>
+                        <div class="stat-change positive" id="progressChange">+0 this week</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="successRate">-</div>
+                        <div class="stat-label">Success Rate</div>
+                        <div class="stat-change positive" id="successChange">+0% this week</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <div class="charts-grid">
+                    <!-- Mood Distribution Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div>
+                                <div class="chart-title">🧠 Emotional Patterns</div>
+                                <div class="chart-subtitle">Distribution of your mood states</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="moodChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Goal Progress Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div>
+                                <div class="chart-title">🎯 Goal Performance</div>
+                                <div class="chart-subtitle">Completion rates by goal</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="progressChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Trends Chart -->
+            <div class="chart-container trend-chart">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">📈 Progress Timeline</div>
+                        <div class="chart-subtitle">Your journey over the last 30 days</div>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="trendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global chart instances
+        let moodChart, progressChart, trendsChart;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+        });
+
+        /**
+         * Fetch dashboard data from the Flask API
+         */
+        async function loadDashboardData() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/data');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStats(data);
+                    createMoodChart(data.mood_data);
+                    createProgressChart(data.progress_data);
+                    createTrendsChart(data.progress_data);
+                } else {
+                    showError('Failed to load dashboard data: ' + data.error);
+                }
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                showError('Network error: Unable to load dashboard data');
+            }
+        }
+
+        /**
+         * Update the stats cards with data
+         */
+        function updateStats(data) {
+            // Count active goals
+            const activeGoals = data.progress_data.goal_progress.length;
+            document.getElementById('totalGoals').textContent = activeGoals;
+
+            // Total mood entries
+            document.getElementById('totalMoods').textContent = data.mood_data.total_entries || 0;
+
+            // Total progress entries
+            document.getElementById('totalProgress').textContent = data.progress_data.total_progress_entries || 0;
+
+            // Calculate success rate
+            const progressData = data.progress_data.goal_progress;
+            let totalYes = 0;
+            let totalChecks = 0;
+
+            progressData.forEach(goal => {
+                totalYes += goal[1]; // yes_count
+                totalChecks += goal[4]; // total_checks
+            });
+
+            const successRate = totalChecks > 0 ? Math.round((totalYes / totalChecks) * 100) : 0;
+            document.getElementById('successRate').textContent = successRate + '%';
+        }
+
+        /**
+         * Create mood distribution doughnut chart
+         */
+        function createMoodChart(moodData) {
+            const ctx = document.getElementById('moodChart').getContext('2d');
+            
+            if (moodChart) {
+                moodChart.destroy();
+            }
+
+            const moodCounts = moodData.mood_counts;
+            
+            if (moodCounts.length === 0) {
+                showEmptyChart('moodChart', 'No mood data available yet', 'Start chatting with AURA to track your emotions!');
+                return;
+            }
+
+            // Mood colors mapping
+            const moodColors = {
+                'happy': '#FFD93D',
+                'sad': '#74B9FF',
+                'stressed': '#FF6B6B',
+                'tired': '#A29BFE',
+                'anxious': '#FD79A8',
+                'excited': '#00B894',
+                'frustrated': '#E17055',
+                'unmotivated': '#636E72',
+                'lonely': '#81ECEC',
+                'worried': '#FDCB6E',
+                'confused': '#E84393',
+                'overwhelmed': '#00CEC9'
+            };
+
+            const labels = moodCounts.map(item => item[0]);
+            const counts = moodCounts.map(item => item[1]);
+            const colors = labels.map(mood => moodColors[mood] || '#95A5A6');
+
+            moodChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels.map(label => label.charAt(0).toUpperCase() + label.slice(1)),
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((context.parsed / total) * 100);
+                                    return `${context.label}: ${context.parsed} entries (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Create goal progress bar chart
+         */
+        function createProgressChart(progressData) {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            
+            if (progressChart) {
+                progressChart.destroy();
+            }
+
+            const goalProgress = progressData.goal_progress;
+            
+            if (goalProgress.length === 0) {
+                showEmptyChart('progressChart', 'No goals tracked yet', 'Set some goals and track your progress!');
+                return;
+            }
+
+            const labels = goalProgress.map(item => item[0].length > 20 ? item[0].substring(0, 20) + '...' : item[0]);
+            const yesData = goalProgress.map(item => item[1]);
+            const noData = goalProgress.map(item => item[2]);
+
+            progressChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Completed ✅',
+                            data: yesData,
+                            backgroundColor: '#00B894',
+                            borderColor: '#00A085',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Not Completed ❌',
+                            data: noData,
+                            backgroundColor: '#FF6B6B',
+                            borderColor: '#E55656',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: false,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: false,
+                            beginAtZero: true,
+                            grid: {
+                                borderDash: [2, 2]
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Create progress trends line chart
+         */
+        function createTrendsChart(progressData) {
+            const ctx = document.getElementById('trendsChart').getContext('2d');
+            
+            if (trendsChart) {
+                trendsChart.destroy();
+            }
+
+            const trends = progressData.progress_trends;
+            
+            if (trends.length === 0) {
+                showEmptyChart('trendsChart', 'Not enough progress data', 'Keep tracking your goals to see trends!');
+                return;
+            }
+
+            const labels = trends.map(item => {
+                const date = new Date(item[0]);
+                return date.toLocaleDateString();
+            }).reverse(); // Reverse to show oldest to newest
+
+            const yesData = trends.map(item => item[1]).reverse();
+            const noData = trends.map(item => item[2]).reverse();
+
+            trendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Goals Completed',
+                            data: yesData,
+                            borderColor: '#00B894',
+                            backgroundColor: 'rgba(0, 184, 148, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'Goals Missed',
+                            data: noData,
+                            borderColor: '#FF6B6B',
+                            backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                borderDash: [2, 2]
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Show modern loading state
+         */
+        function showLoading() {
+            const containers = ['moodChart', 'progressChart', 'trendsChart'];
+            containers.forEach(id => {
+                const parent = document.getElementById(id).parentNode;
+                parent.innerHTML = `
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <div>Loading analytics...</div>
+                    </div>
+                `;
+            });
+        }
+
+        /**
+         * Show modern empty chart state
+         */
+        function showEmptyChart(chartId, title, message) {
+            const parent = document.getElementById(chartId).parentNode;
+            const iconMap = {
+                'moodChart': '🧠',
+                'progressChart': '🎯', 
+                'trendsChart': '📈'
+            };
+            
+            parent.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">${iconMap[chartId] || '📊'}</div>
+                    <h3>${title}</h3>
+                    <p>${message}</p>
+                    <a href="/">Start Using AURA</a>
+                </div>
+            `;
+        }
+
+        /**
+         * Show error state
+         */
+        function showError(message) {
+            const container = document.querySelector('.container');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-state';
+            errorDiv.innerHTML = `
+                <h3>⚠️ Error Loading Dashboard</h3>
+                <p>${message}</p>
+                <button onclick="location.reload()" style="margin-top: 10px; padding: 10px 20px; border: none; border-radius: 5px; background: #e74c3c; color: white; cursor: pointer;">Try Again</button>
+            `;
+            container.insertBefore(errorDiv, container.firstChild);
+        }
+
+        // =============================================================================
+        // THEME TOGGLE FUNCTIONALITY
+        // =============================================================================
+
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.querySelector('.theme-icon');
+        const html = document.documentElement;
+
+        // Check for saved theme preference or default to 'dark'
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+
+        // Set initial theme
+        if (currentTheme === 'light') {
+            html.setAttribute('data-theme', 'light');
+            themeIcon.textContent = '☀️';
+        } else {
+            html.removeAttribute('data-theme');
+            themeIcon.textContent = '🌙';
+        }
+
+        // Theme toggle function
+        function toggleTheme() {
+            const isLight = html.getAttribute('data-theme') === 'light';
+            
+            if (isLight) {
+                // Switch to dark
+                html.removeAttribute('data-theme');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                // Switch to light
+                html.setAttribute('data-theme', 'light');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'light');
+            }
+            
+            // Add a subtle animation to the toggle button
+            themeToggle.style.transform = 'rotate(360deg)';
+            setTimeout(() => {
+                themeToggle.style.transform = '';
+            }, 300);
+            
+            // Update Chart.js themes if needed
+            updateChartsForTheme();
+        }
+
+        // Add event listener
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Update charts for theme changes (enhance Chart.js colors)
+        function updateChartsForTheme() {
+            // Optionally reload dashboard data to update chart colors
+            // This can be enhanced further to dynamically update chart themes
+            setTimeout(() => {
+                loadDashboardData();
+            }, 300);
+        }
+
+        // System theme preference detection (optional enhancement)
+        if (window.matchMedia && !localStorage.getItem('theme')) {
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (!systemPrefersDark) {
+                toggleTheme();
+            }
+        }
+    </script>
+</body>
+</html>

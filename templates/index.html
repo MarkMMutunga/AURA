@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AURA – Your Companion AI</title>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <style>
         /* Reset and base styles */
         * {
@@ -12,53 +18,190 @@
             box-sizing: border-box;
         }
 
+        :root {
+            /* Dark theme (default) */
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent-blue: #00d4ff;
+            --accent-purple: #8b5cf6;
+            --accent-green: #22c55e;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow-glow: 0 0 40px rgba(0, 212, 255, 0.15);
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Light theme */
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --glass-bg: rgba(0, 0, 0, 0.03);
+            --glass-border: rgba(0, 0, 0, 0.08);
+            --shadow-glow: 0 0 40px rgba(0, 212, 255, 0.1);
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Theme transition for all elements */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Animated background particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) translateX(0px); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-10px) translateX(100px); opacity: 0; }
+        }
+
+        /* Main container */
+        .app-container {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Modern header */
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
         }
 
-        .chat-container {
-            width: 90%;
-            max-width: 800px;
-            height: 90vh;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        .header-content h1 {
+            font-size: clamp(24px, 4vw, 32px);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        .header-content p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .nav a {
+            padding: 10px 16px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(20px);
+        }
+
+        .nav a:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            padding: 10px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(20px);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* Chat area */
+        .chat-area {
+            flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        /* Header */
-        .chat-header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
-            position: relative;
-        }
-
-        .chat-header h1 {
-            font-size: 2em;
-            font-weight: 300;
-            margin-bottom: 5px;
-        }
-
-        .chat-header p {
-            opacity: 0.9;
-            font-size: 0.9em;
-        }
-
-        /* Chat window */
         .chat-window {
             flex: 1;
-            padding: 20px;
+            padding: 24px;
             overflow-y: auto;
-            background-color: #f8f9fa;
+            background: transparent;
+            scroll-behavior: smooth;
         }
 
         .chat-window::-webkit-scrollbar {
@@ -66,7 +209,49 @@
         }
 
         .chat-window::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: transparent;
+        }
+
+        .chat-window::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 3px;
+        }
+
+        /* Welcome message */
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            margin-bottom: 24px;
+        }
+
+        .welcome-message h2 {
+            font-size: clamp(22px, 3vw, 28px);
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+        }
+
+        .welcome-message p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 12px;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .welcome-message em {
+            color: var(--accent-green);
+            font-style: normal;
+            font-weight: 600;
         }
 
         .chat-window::-webkit-scrollbar-thumb {
@@ -78,89 +263,108 @@
             background: #a8a8a8;
         }
 
-        /* Message styles */
+        /* Modern message styles */
         .message {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             display: flex;
             align-items: flex-end;
-            animation: fadeIn 0.3s ease-in;
+            gap: 12px;
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px) scale(0.95);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+            }
         }
 
         .message.user {
-            justify-content: flex-end;
+            flex-direction: row-reverse;
         }
 
         .message.aura {
-            justify-content: flex-start;
+            flex-direction: row;
         }
 
         .message-bubble {
             max-width: 70%;
-            padding: 12px 18px;
-            border-radius: 18px;
-            line-height: 1.4;
+            padding: 16px 20px;
+            border-radius: 20px;
+            line-height: 1.5;
             word-wrap: break-word;
             white-space: pre-line;
+            position: relative;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
             color: white;
-            border-bottom-right-radius: 4px;
+            border: none;
+            border-bottom-right-radius: 8px;
+            box-shadow: var(--shadow-glow);
         }
 
         .message.aura .message-bubble {
-            background: #e9ecef;
-            color: #333;
-            border-bottom-left-radius: 4px;
-            border: 1px solid #dee2e6;
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            border-bottom-left-radius: 8px;
         }
 
         .message-avatar {
-            width: 35px;
-            height: 35px;
+            width: 36px;
+            height: 36px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            font-weight: bold;
-            margin: 0 10px;
+            backdrop-filter: blur(20px);
+            flex-shrink: 0;
         }
 
         .message.user .message-avatar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            order: 2;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
         }
 
         .message.aura .message-avatar {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
         }
 
-        /* Input area */
+        /* Modern input area */
         .chat-input {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #dee2e6;
+            padding: 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         .chat-input input {
             flex: 1;
-            padding: 15px 20px;
-            border: 2px solid #e9ecef;
-            border-radius: 25px;
-            outline: none;
+            padding: 16px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            color: var(--text-primary);
             font-size: 16px;
-            transition: border-color 0.3s ease;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chat-input input::placeholder {
+            color: var(--text-secondary);
         }
 
         .chat-input input:focus {
@@ -246,68 +450,117 @@
 
         /* Responsive design */
         @media (max-width: 768px) {
-            .chat-container {
-                width: 95%;
-                height: 95vh;
-                border-radius: 10px;
+            .app-container {
+                padding: 0;
             }
-
-            .chat-header h1 {
-                font-size: 1.5em;
+            
+            .header {
+                padding: 16px 20px;
             }
-
+            
+            .header-content h1 {
+                font-size: 24px;
+            }
+            
+            .nav {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .chat-window {
+                padding: 20px;
+            }
+            
             .message-bubble {
                 max-width: 85%;
             }
-
-            .chat-input input,
-            .chat-input button {
-                padding: 12px 18px;
-                font-size: 14px;
+            
+            .chat-input {
+                padding: 20px;
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .chat-input input {
+                padding: 14px 18px;
+            }
+            
+            .particle {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <!-- Chat Header -->
-        <div class="chat-header">
-            <h1>AURA</h1>
-            <p>Your Adaptive Understanding & Reflective Assistant</p>
-        </div>
+    <!-- Animated background particles -->
+    <div class="bg-particles">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: 6s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: 8s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: 10s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: 12s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: 14s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: 16s;"></div>
+    </div>
 
-        <!-- Chat Window -->
-        <div class="chat-window" id="chatWindow">
-            <div class="welcome-message">
-                <h2>Welcome to AURA! 🤖</h2>
-                <p>I'm here to help you track your goals and support your emotional well-being.</p>
-                <p>Feel free to share your goals or tell me how you're feeling today!</p>
-                <p><em>Type your message below to get started...</em></p>
+    <div class="app-container">
+        <!-- Modern Header -->
+        <div class="header">
+            <div class="header-content">
+                <h1>AURA</h1>
+                <p>Your Adaptive Understanding & Reflective Assistant</p>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="nav">
+                <a href="/">💬 Chat</a>
+                <a href="/dashboard">📊 Dashboard</a>
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
             </div>
         </div>
 
-        <!-- Typing Indicator -->
-        <div class="message aura typing-indicator" id="typingIndicator">
-            <div class="message-avatar">🤖</div>
-            <div class="message-bubble">
-                <div class="typing-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+        <!-- Chat Area -->
+        <div class="chat-area">
+
+        <!-- Chat Area -->
+        <div class="chat-area">
+            <!-- Chat Window -->
+            <div class="chat-window" id="chatWindow">
+                <div class="welcome-message">
+                    <h2>Welcome to AURA! 🤖</h2>
+                    <p>I'm here to help you track your goals and support your emotional well-being.</p>
+                    <p>Feel free to share your goals or tell me how you're feeling today!</p>
+                    <p><em>Type your message below to get started...</em></p>
                 </div>
             </div>
-        </div>
 
-        <!-- Chat Input -->
-        <div class="chat-input">
-            <input 
-                type="text" 
-                id="messageInput" 
-                placeholder="Type your message here..." 
-                maxlength="500"
-                autocomplete="off"
-            >
-            <button id="sendButton">Send</button>
+            <!-- Typing Indicator -->
+            <div class="message aura typing-indicator" id="typingIndicator">
+                <div class="message-avatar">🤖</div>
+                <div class="message-bubble">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Type your message here..." 
+                    maxlength="500"
+                    autocomplete="off"
+                >
+                <button id="sendButton">Send</button>
+            </div>
         </div>
     </div>
 
@@ -440,6 +693,60 @@
         }
         
         window.addEventListener('resize', resizeChat);
+
+        // =============================================================================
+        // THEME TOGGLE FUNCTIONALITY
+        // =============================================================================
+
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.querySelector('.theme-icon');
+        const html = document.documentElement;
+
+        // Check for saved theme preference or default to 'dark'
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+
+        // Set initial theme
+        if (currentTheme === 'light') {
+            html.setAttribute('data-theme', 'light');
+            themeIcon.textContent = '☀️';
+        } else {
+            html.removeAttribute('data-theme');
+            themeIcon.textContent = '🌙';
+        }
+
+        // Theme toggle function
+        function toggleTheme() {
+            const isLight = html.getAttribute('data-theme') === 'light';
+            
+            if (isLight) {
+                // Switch to dark
+                html.removeAttribute('data-theme');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                // Switch to light
+                html.setAttribute('data-theme', 'light');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'light');
+            }
+            
+            // Add a subtle animation to the toggle button
+            themeToggle.style.transform = 'rotate(360deg)';
+            setTimeout(() => {
+                themeToggle.style.transform = '';
+            }, 300);
+        }
+
+        // Add event listener
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // System theme preference detection (optional enhancement)
+        if (window.matchMedia && !localStorage.getItem('theme')) {
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (!systemPrefersDark) {
+                toggleTheme();
+            }
+        }
     </script>
 </body>
 </html>
