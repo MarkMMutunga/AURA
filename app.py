@@ -24,17 +24,26 @@ See the LICENSE file for full license text.
 #==============================================================================
 
 from flask import Flask, render_template, request, jsonify, session
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 import sqlite3
 import datetime
 import re
 import random
 import os
+import atexit
 
 # Import the AURA class from our existing module
 from aura import AURA
 
 app = Flask(__name__)
 app.secret_key = 'aura-web-secret-key-2025'  # Required for sessions
+
+# Initialize the background scheduler
+scheduler = BackgroundScheduler()
+scheduler.start()
+# Shut down the scheduler when exiting the app
+atexit.register(lambda: scheduler.shutdown())
 
 class WebAURA(AURA):
     """
@@ -103,8 +112,27 @@ class WebAURA(AURA):
             return "📋 You don't have any goals yet. Tell me something you want to achieve!"
     
     def get_initial_greeting(self):
-        """Get the initial greeting with goals for new sessions."""
+        """Get the initial greeting with goals and pending reminders for new sessions."""
         greeting = "🤖 Welcome to AURA - Your Adaptive Understanding & Reflective Assistant!\n\n"
+        
+        # Check for pending reminders first
+        reminders = self.get_unread_reminders()
+        if reminders:
+            greeting += "🔔 You have pending reminders:\n\n"
+            for reminder_id, message, created_at, goal_text in reminders:
+                try:
+                    date_obj = datetime.datetime.fromisoformat(created_at)
+                    formatted_time = date_obj.strftime("%I:%M %p")
+                except:
+                    formatted_time = "Recently"
+                
+                greeting += f"• {message}\n"
+                greeting += f"  📅 {formatted_time}\n\n"
+                
+                # Mark reminder as read since we're showing it
+                self.mark_reminder_read(reminder_id)
+            
+            greeting += "---\n\n"
         
         # Show goals if they exist
         goals = self.get_goals()
@@ -133,8 +161,146 @@ class WebAURA(AURA):
         
         return greeting
 
+    def get_mood_analytics(self):
+        """
+        Fetch mood data from database and prepare for charting.
+        Returns mood counts by type and mood trends over time.
+        """
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            # Get mood counts by type for pie/doughnut chart
+            cursor.execute('''
+                SELECT mood, COUNT(*) as count 
+                FROM moods 
+                WHERE mood != 'general' AND mood != 'other'
+                GROUP BY mood 
+                ORDER BY count DESC
+            ''')
+            mood_counts = cursor.fetchall()
+            
+            # Get mood trends over time (last 30 days)
+            cursor.execute('''
+                SELECT DATE(date_logged) as date, mood, COUNT(*) as count
+                FROM moods 
+                WHERE date_logged >= datetime('now', '-30 days')
+                AND mood != 'general' AND mood != 'other'
+                GROUP BY DATE(date_logged), mood
+                ORDER BY date DESC
+            ''')
+            mood_trends = cursor.fetchall()
+            
+            # Get total mood entries
+            cursor.execute('SELECT COUNT(*) FROM moods')
+            total_moods = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            return {
+                'mood_counts': mood_counts,
+                'mood_trends': mood_trends,
+                'total_entries': total_moods
+            }
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error fetching mood analytics: {e}")
+            return {'mood_counts': [], 'mood_trends': [], 'total_entries': 0}
+
+    def get_goal_progress_analytics(self):
+        """
+        Fetch goal progress data from database and prepare for charting.
+        Returns progress statistics for each goal.
+        """
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            # Get progress data grouped by goal with yes/no counts
+            cursor.execute('''
+                SELECT 
+                    g.goal_text,
+                    SUM(CASE WHEN p.status = 'yes' THEN 1 ELSE 0 END) as yes_count,
+                    SUM(CASE WHEN p.status = 'no' THEN 1 ELSE 0 END) as no_count,
+                    SUM(CASE WHEN p.status = 'maybe' THEN 1 ELSE 0 END) as maybe_count,
+                    COUNT(p.id) as total_checks
+                FROM goals g
+                LEFT JOIN progress p ON g.id = p.goal_id
+                WHERE g.status = 'active'
+                GROUP BY g.id, g.goal_text
+                ORDER BY total_checks DESC
+            ''')
+            goal_progress = cursor.fetchall()
+            
+            # Get progress trends over time (last 30 days)
+            cursor.execute('''
+                SELECT 
+                    DATE(p.created_at) as date,
+                    SUM(CASE WHEN p.status = 'yes' THEN 1 ELSE 0 END) as yes_count,
+                    SUM(CASE WHEN p.status = 'no' THEN 1 ELSE 0 END) as no_count
+                FROM progress p
+                WHERE p.created_at >= datetime('now', '-30 days')
+                GROUP BY DATE(p.created_at)
+                ORDER BY date DESC
+            ''')
+            progress_trends = cursor.fetchall()
+            
+            # Get total progress entries
+            cursor.execute('SELECT COUNT(*) FROM progress')
+            total_progress = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            return {
+                'goal_progress': goal_progress,
+                'progress_trends': progress_trends,
+                'total_progress_entries': total_progress
+            }
+            
+        except sqlite3.Error as e:
+            print(f"❌ Error fetching goal progress analytics: {e}")
+            return {'goal_progress': [], 'progress_trends': [], 'total_progress_entries': 0}
+
+
 # Create a global WebAURA instance
 web_aura = WebAURA()
+
+# =============================================================================
+# SCHEDULER FUNCTIONS FOR DAILY REMINDERS
+# =============================================================================
+
+def create_daily_reminder_job():
+    """
+    Scheduled job function that creates daily reminders.
+    This runs in the background and generates reminder messages for users' goals.
+    """
+    try:
+        print("🔔 Running daily reminder job...")
+        
+        # Create a reminder using the global AURA instance
+        success = web_aura.create_daily_reminder()
+        
+        if success:
+            print("✅ Daily reminder created successfully!")
+        else:
+            print("ℹ️  No goals found or reminder creation failed.")
+            
+    except Exception as e:
+        print(f"❌ Error in daily reminder job: {e}")
+
+# Schedule the daily reminder job
+# For testing: runs every 2 minutes
+# For production: change to every 24 hours using cron trigger
+scheduler.add_job(
+    func=create_daily_reminder_job,
+    trigger=IntervalTrigger(minutes=2),  # Change to hours=24 for daily
+    id='daily_reminder_job',
+    name='Create daily goal reminders',
+    replace_existing=True
+)
+
+print("📅 Daily reminder scheduler initialized (every 2 minutes for testing)")
+print("💡 Change to hours=24 for production use")
 
 @app.route('/')
 def home():
@@ -174,6 +340,82 @@ def reset_session():
     """Reset the chat session."""
     session.clear()
     return jsonify({'status': 'Session reset'})
+
+@app.route('/check-reminders')
+def check_reminders():
+    """Check for new unread reminders and return them."""
+    try:
+        reminders = web_aura.get_unread_reminders()
+        
+        if reminders:
+            # Format reminders for display
+            reminder_messages = []
+            for reminder_id, message, created_at, goal_text in reminders:
+                try:
+                    date_obj = datetime.datetime.fromisoformat(created_at)
+                    formatted_time = date_obj.strftime("%I:%M %p")
+                except:
+                    formatted_time = "Recently"
+                
+                reminder_messages.append({
+                    'id': reminder_id,
+                    'message': message,
+                    'time': formatted_time,
+                    'goal': goal_text
+                })
+                
+                # Mark as read since we're showing it
+                web_aura.mark_reminder_read(reminder_id)
+            
+            return jsonify({
+                'has_reminders': True,
+                'reminders': reminder_messages
+            })
+        else:
+            return jsonify({
+                'has_reminders': False,
+                'reminders': []
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'has_reminders': False,
+            'error': str(e)
+        })
+
+# =============================================================================
+# DASHBOARD ROUTES AND DATA ANALYTICS
+# =============================================================================
+
+@app.route('/dashboard')
+def dashboard():
+    """Serve the analytics dashboard."""
+    return render_template('dashboard.html')
+
+@app.route('/data')
+def get_dashboard_data():
+    """
+    API endpoint to fetch analytics data for the dashboard.
+    Returns mood trends and goal progress data as JSON.
+    """
+    try:
+        # Get mood trends data using WebAURA instance
+        mood_data = web_aura.get_mood_analytics()
+        
+        # Get goal progress data using WebAURA instance
+        progress_data = web_aura.get_goal_progress_analytics()
+        
+        return jsonify({
+            'success': True,
+            'mood_data': mood_data,
+            'progress_data': progress_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 if __name__ == '__main__':
     print("🌐 Starting AURA Web Interface...")
